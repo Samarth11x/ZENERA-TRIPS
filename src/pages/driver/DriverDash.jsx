@@ -1,202 +1,196 @@
-import React, { useState } from 'react';
-import { Container, Row, Col, Card, Form, Button, Badge } from 'react-bootstrap';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Form, Button, Card, Badge, Alert } from 'react-bootstrap';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useTrip } from '../../context/TripContext';
-import { TRIP_STATUS } from '../../utils/constants';
-import ZeneraMap from '../../components/common/ZeneraMap';
+import { useUI } from '../../context/UIContext';
+import { driverService } from '../../services/driverService';
+import { kycService } from '../../services/kycService';
+import GlassCard from '../../components/common/GlassCard';
+import StatusBadge from '../../components/common/StatusBadge';
+import LoadingState from '../../components/common/LoadingState';
+import { KYC_STATUS, ROLES, TRIP_STATUS } from '../../utils/constants';
 
 const DriverDash = () => {
     const { user } = useAuth();
-    const { activeTrip, acceptRide, updateStatus, verifyTripOTP, completeTrip, cancelTrip } = useTrip();
-    const [isOnline, setIsOnline] = useState(true);
-    const [otpInput, setOtpInput] = useState('');
-    const [otpError, setOtpError] = useState(false);
+    const { activeTrip, refreshAvailableRequests, availableRequests } = useTrip();
+    const { showToast } = useUI();
+    const navigate = useNavigate();
+    
+    const [driverProfile, setDriverProfile] = useState(null);
+    const [kycStatus, setKycStatus] = useState(null);
+    const [isOnline, setIsOnline] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    const handleOtpSubmit = (e) => {
-        e.preventDefault();
-        setOtpError(false);
-        const success = verifyTripOTP(otpInput);
-        if (!success) {
-            setOtpError(true);
-        } else {
-            setOtpInput('');
+    useEffect(() => {
+        if (user) {
+            const profile = driverService.getDriverProfile(user.uid);
+            const kyc = kycService.getKycStatus(user.uid);
+            setDriverProfile(profile);
+            setKycStatus(kyc?.status || KYC_STATUS.PENDING);
+            setIsOnline(profile?.isOnline || false);
+            setLoading(false);
+        }
+    }, [user]);
+
+    const handleToggleOnline = async () => {
+        try {
+            const newStatus = !isOnline;
+            await driverService.toggleOnlineStatus(user.uid, newStatus);
+            setIsOnline(newStatus);
+            showToast(newStatus ? "You are now ONLINE. Searching for requests..." : "You are now OFFLINE.");
+            if (newStatus) refreshAvailableRequests();
+        } catch (err) {
+            showToast(err.message, 'error');
         }
     };
 
+    if (loading) return <LoadingState message="Syncing Partner Dashboard..." fullPage />;
+
     return (
-        <div className="driver-portal bg-black min-vh-100 pb-5">
-            <Container className="pt-4 px-4 overflow-hidden">
-                <div className="d-flex justify-content-between align-items-center mb-4">
+        <div className="app-shell bg-black min-vh-100 pb-5">
+            <Container className="pt-4">
+                <header className="mb-4 d-flex justify-content-between align-items-center">
                     <div>
-                        <h2 className="text-white fw-800 mb-1">Driver Partner</h2>
+                        <h2 className="text-white fw-800 mb-1">Partner Dashboard</h2>
                         <div className="d-flex align-items-center gap-2">
-                            <i className={`bi bi-circle-fill ${isOnline ? 'text-success' : 'text-danger'}`} style={{ fontSize: '10px' }}></i>
-                            <span className="text-muted small fw-bold">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
+                             <StatusBadge status={kycStatus} type="kyc" />
+                             <span className="text-muted small">• {isOnline ? 'Active' : 'Standby'}</span>
                         </div>
                     </div>
                     <Form.Check 
-                        type="switch" 
-                        id="online-switch" 
-                        className="custom-switch-accent" 
+                        type="switch"
+                        id="online-switch"
+                        className="custom-switch-lg shadow-glow"
                         checked={isOnline}
-                        onChange={(e) => setIsOnline(e.target.checked)}
+                        onChange={handleToggleOnline}
+                        disabled={kycStatus !== KYC_STATUS.APPROVED}
                     />
-                </div>
+                </header>
 
-                {/* Earnings Summary */}
-                <Row className="g-3 mb-4">
-                    <Col xs={6}>
-                        <Card className="card-glass border-z p-3 text-center shadow-glow bg-gradient-dark">
-                            <div className="text-muted small fw-bold mb-1 opacity-75">TODAY'S EARNINGS</div>
-                            <div className="text-white fs-4 fw-800">₹1,245.50</div>
-                        </Card>
-                    </Col>
-                    <Col xs={6}>
-                        <Card className="card-glass border-z p-3 text-center shadow-glow">
-                            <div className="text-muted small fw-bold mb-1 opacity-75">RIDES COMPLETED</div>
-                            <div className="text-white fs-4 fw-800">8 Trips</div>
-                        </Card>
-                    </Col>
-                </Row>
-
-                {/* Performance Chart - SVG Mock */}
-                <Card className="card-glass border-z p-4 mb-4 shadow-glow">
-                    <h6 className="text-accent fw-bold small mb-3">WEEKLY PERFORMANCE</h6>
-                    <div className="d-flex align-items-end justify-content-between mb-2" style={{ height: '80px' }}>
-                        {[40, 70, 45, 90, 65, 85, 30].map((h, i) => (
-                            <motion.div 
-                                key={i}
-                                initial={{ height: 0 }}
-                                animate={{ height: `${h}%` }}
-                                transition={{ delay: i * 0.1, duration: 0.8 }}
-                                className={`rounded-top ${i === 3 ? 'bg-accent' : 'bg-secondary op-25'}`}
-                                style={{ width: '8%', minWidth: '10px' }}
-                            ></motion.div>
-                        ))}
-                    </div>
-                    <div className="d-flex justify-content-between text-muted x-small">
-                        <span>MON</span>
-                        <span>THU</span>
-                        <span>SUN</span>
-                    </div>
-                </Card>
-
-                {/* Metrics Grid */}
-                <Row className="g-3 mb-4">
-                    {[
-                        { label: 'RATING', value: '4.95', icon: 'star-fill', color: 'text-warning' },
-                        { label: 'ACCEPTANCE', value: '98%', icon: 'check-all', color: 'text-success' },
-                        { label: 'CANCEL RATE', value: '2%', icon: 'x-circle', color: 'text-danger' }
-                    ].map((m, idx) => (
-                        <Col key={idx} xs={4}>
-                            <div className="text-center p-2 card-glass border-z rounded-3">
-                                <i className={`bi bi-${m.icon} ${m.color} small mb-1 d-block`}></i>
-                                <div className="text-white fw-bold small">{m.value}</div>
-                                <div className="text-muted x-small fw-bold">{m.label}</div>
-                            </div>
-                        </Col>
-                    ))}
-                </Row>
-
-                {/* Active Trip Card */}
-                <AnimatePresence>
-                    {activeTrip && isOnline && (
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0 }} 
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="mb-4"
-                        >
-                            <Card className="card-glass border-z p-4 shadow-glow border-accent shadow-accent">
-                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                    <Badge bg="accent" text="dark" className="px-3 py-2 fw-bold">
-                                        {activeTrip.status.replace('_', ' ')}
-                                    </Badge>
-                                    <span className="text-white small fw-bold">ID: {activeTrip.id}</span>
+                <Row className="g-4">
+                    {/* Active Ride Card */}
+                    <Col lg={8}>
+                        {activeTrip && activeTrip.driver?.id === user.uid ? (
+                            <GlassCard className="border-accent mb-4 position-relative overflow-hidden">
+                                <div className="position-absolute top-0 end-0 p-4">
+                                     <StatusBadge status={activeTrip.status} />
                                 </div>
-                                <div className="mb-3 rounded-4 overflow-hidden border-z" style={{ height: '180px' }}>
-                                    <ZeneraMap trip={activeTrip} />
+                                <div className="mb-4">
+                                    <h6 className="text-accent small fw-bold text-uppercase mb-2">My Active Trip</h6>
+                                    <h3 className="text-white fw-800">{activeTrip.pickupLocation} &rarr; {activeTrip.majorDestinations?.[0] || 'Tour'}</h3>
+                                    <p className="text-muted small">Target: {activeTrip.userName} • ID: {activeTrip.id}</p>
                                 </div>
-                                <h4 className="text-white fw-bold mb-3">{activeTrip.pickup || 'Location assigned'}</h4>
                                 
-                                <div className="d-grid gap-3">
-                                    {/* Action based on status */}
-                                    {activeTrip.status === TRIP_STATUS.SEARCHING && (
-                                        <div className="text-center py-3">
-                                            <div className="pulse-animation mb-4 mx-auto bg-accent rounded-circle d-flex align-items-center justify-content-center" style={{ width: '80px', height: '80px' }}>
-                                                <i className="bi bi-geo-alt-fill text-dark fs-2"></i>
-                                            </div>
-                                            <h5 className="text-white fw-bold mb-3">New Ride Request!</h5>
-                                            <p className="text-muted small mb-4">{activeTrip.pickup} → {activeTrip.destination}</p>
-                                            <div className="d-flex gap-3">
-                                                <Button variant="danger" className="flex-grow-1 py-3 border-z" onClick={cancelTrip}>REJECT</Button>
-                                                <Button variant="primary" className="flex-grow-1 py-3 shadow-glow" onClick={() => acceptRide()}>ACCEPT</Button>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {activeTrip.status === TRIP_STATUS.ASSIGNED && (
-                                        <Button variant="primary" className="py-3 shadow-glow" onClick={() => updateStatus(TRIP_STATUS.ARRIVING)}>
-                                            REACHED PICKUP
-                                        </Button>
-                                    )}
-
-                                    {activeTrip.status === TRIP_STATUS.ARRIVING && (
-                                        <Button variant="success" className="py-3 shadow-glow" onClick={() => updateStatus(TRIP_STATUS.OTP_READY)}>
-                                            I'M AT LOCATION
-                                        </Button>
-                                    )}
-
-                                    {activeTrip.status === TRIP_STATUS.OTP_READY && (
-                                        <div className="otp-verification p-3 bg-dark rounded-4 border-z border border-accent">
-                                            <h6 className="text-accent text-center fw-bold small mb-3">ASK USER FOR PIN</h6>
-                                            <Form onSubmit={handleOtpSubmit}>
-                                                <Form.Control 
-                                                    type="number" 
-                                                    placeholder="ENTER 4-DIGIT OTP" 
-                                                    className={`bg-dark text-white text-center fs-2 fw-800 border-z mb-3 letter-spacing-wide ${otpError ? 'border-danger' : ''}`} 
-                                                    value={otpInput}
-                                                    onChange={(e) => setOtpInput(e.target.value)}
-                                                    maxLength={4}
-                                                    required
-                                                />
-                                                {otpError && <p className="text-danger small text-center mb-2">Incorrect OTP. Try again.</p>}
-                                                <Button type="submit" variant="primary" className="w-100 py-3">START TRIP</Button>
-                                            </Form>
-                                        </div>
-                                    )}
-
-                                    {activeTrip.status === TRIP_STATUS.STARTED && (
-                                        <div className="text-center">
-                                            <div className="text-success small fw-bold mb-2">TRIP IN PROGRESS</div>
-                                            <Button variant="danger" className="w-100 py-3 shadow-glow" onClick={completeTrip}>
-                                                COMPLETE RIDE
-                                            </Button>
-                                        </div>
-                                    )}
-
-                                    {activeTrip.status === TRIP_STATUS.COMPLETED && (
-                                        <div className="text-center py-4">
-                                            <i className="bi bi-patch-check-fill text-success fs-1 mb-2"></i>
-                                            <h5 className="text-white">Trip Finished!</h5>
-                                            <p className="text-muted small">Ride summary and earnings updated.</p>
-                                        </div>
-                                    )}
+                                <div className="d-flex gap-4 mb-4">
+                                    <div className="bg-charcoal p-3 rounded-4 border-z">
+                                        <div className="small text-muted mb-1">Final Total (Est.)</div>
+                                        <div className="text-accent fw-bold fs-4">₹{activeTrip.pricingEstimate?.total?.toLocaleString()}</div>
+                                    </div>
+                                    <div className="d-flex align-items-center">
+                                         {activeTrip.status === TRIP_STATUS.DRIVER_ASSIGNED && <i className="bi bi-geo-alt-fill text-accent fs-3 me-2"></i>}
+                                         <span className="text-muted small">Navigate to pickup location</span>
+                                    </div>
                                 </div>
-                            </Card>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
 
-                {/* Status Toggle Info */}
-                {!isOnline && (
-                    <div className="text-center py-5">
-                        <i className="bi bi-moon-stars fs-1 text-muted mb-3 opacity-25"></i>
-                        <h4 className="text-white opacity-50">You are Offline</h4>
-                        <p className="text-muted small">Go online to start receiving ride requests in your area.</p>
-                    </div>
-                )}
+                                <Button 
+                                    as={Link} 
+                                    to="/driver/active" 
+                                    variant="primary" 
+                                    className="px-5 py-3 shadow-glow"
+                                >
+                                    Manage Trip <i className="bi bi-play-circle-fill ms-2"></i>
+                                </Button>
+                            </GlassCard>
+                        ) : (
+                            <div className="mb-4">
+                                <Row className="g-3 mb-4">
+                                    {[
+                                        { label: 'Today Earnings', value: '₹0', icon: 'bi-wallet2', color: 'text-success' },
+                                        { label: 'Pending Requests', value: availableRequests.length, icon: 'bi-list-ul', color: 'text-accent' }
+                                    ].map((stat, idx) => (
+                                        <Col key={idx} md={6}>
+                                            <GlassCard className="d-flex align-items-center gap-3 py-3 px-4">
+                                                <div className="bg-charcoal p-3 rounded-3 border border-z">
+                                                    <i className={`bi ${stat.icon} fs-4 ${stat.color}`}></i>
+                                                </div>
+                                                <div>
+                                                    <div className={`fs-4 fw-800 ${stat.color}`}>{stat.value}</div>
+                                                    <div className="text-muted small text-uppercase fw-bold">{stat.label}</div>
+                                                </div>
+                                            </GlassCard>
+                                        </Col>
+                                    ))}
+                                </Row>
+
+                                {isOnline ? (
+                                    <GlassCard className="text-center py-5 border-dashed bg-charcoal/30">
+                                         <div className="spinner-grow text-accent mb-4" role="status" style={{ width: '3rem', height: '3rem' }}></div>
+                                         <h4 className="text-white fw-800">Searching for Rides...</h4>
+                                         <p className="text-muted mb-4 px-5">Stay in high-demand areas in Bangalore to receive faster booking requests.</p>
+                                         <Button as={Link} to="/driver/requests" variant="outline-accent" className="px-5 py-2 border-z" style={{ color: 'var(--z-accent-orange)' }}>View All Available Requests</Button>
+                                    </GlassCard>
+                                ) : (
+                                    <GlassCard className="text-center py-5 border-z bg-black">
+                                         <i className="bi bi-power fs-1 text-muted mb-4 opacity-50"></i>
+                                         <h4 className="text-muted fw-800">You are Offline</h4>
+                                         <p className="text-muted mb-4">Go online to start receiving booking requests from customers.</p>
+                                         {kycStatus !== KYC_STATUS.APPROVED ? (
+                                             <Alert variant="warning" className="mx-4 px-4 bg-transparent border-z text-muted small">
+                                                 <i className="bi bi-info-circle-fill me-2"></i>
+                                                 Complete your <Link to="/driver/kyc" className="text-accent fw-bold text-decoration-none">KYC verification</Link> to enable your online status.
+                                             </Alert>
+                                         ) : (
+                                             <Button variant="primary" className="px-5 py-3" onClick={handleToggleOnline}>Go Online</Button>
+                                         )}
+                                    </GlassCard>
+                                )}
+                            </div>
+                        )}
+                    </Col>
+
+                    {/* Quick Profile / Earnings Sidebar */}
+                    <Col lg={4}>
+                         <GlassCard className="p-4 mb-4">
+                             <div className="d-flex align-items-center gap-3 mb-4">
+                                 <div className="bg-accent text-dark fw-800 rounded-circle d-flex align-items-center justify-content-center" style={{ width: '48px', height: '48px', fontSize: '1.2rem' }}>{user?.name?.charAt(0)}</div>
+                                 <div>
+                                     <div className="text-white fw-bold">{user?.name}</div>
+                                     <div className="text-muted small">KA-01-MJ-1234 • Sedan</div>
+                                 </div>
+                             </div>
+                             <div className="d-grid gap-3 border-top border-z pt-4 mt-2">
+                                 <div className="d-flex justify-content-between text-muted small">
+                                     <span>Lifetime Trips</span>
+                                     <span className="text-white fw-bold">42</span>
+                                 </div>
+                                 <div className="d-flex justify-content-between text-muted small">
+                                     <span>Rating</span>
+                                     <span className="text-white fw-bold">4.8 <i className="bi bi-star-fill text-accent ms-1"></i></span>
+                                 </div>
+                                 <div className="d-flex justify-content-between text-muted small">
+                                     <span>Acceptance Rate</span>
+                                     <span className="text-white fw-bold">94%</span>
+                                 </div>
+                             </div>
+                         </GlassCard>
+
+                         <GlassCard className="p-4 bg-charcoal">
+                              <h6 className="text-accent small fw-bold text-uppercase mb-3">Recent Earnings</h6>
+                              <div className="d-grid gap-3">
+                                  <div className="d-flex justify-content-between align-items-center p-2 rounded border border-z bg-black shadow-sm">
+                                      <div className="small text-muted">Mar 28, 2026</div>
+                                      <div className="text-success fw-bold">₹2,450</div>
+                                  </div>
+                                  <div className="d-flex justify-content-between align-items-center p-2 rounded border border-z bg-black shadow-sm">
+                                      <div className="small text-muted">Mar 25, 2026</div>
+                                      <div className="text-success fw-bold">₹1,820</div>
+                                  </div>
+                                  <Button variant="link" className="text-accent x-small p-0 text-decoration-none text-start">View Detailed Balance History &rarr;</Button>
+                              </div>
+                         </GlassCard>
+                    </Col>
+                </Row>
             </Container>
         </div>
     );

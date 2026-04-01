@@ -1,41 +1,60 @@
 import React, { createContext, useContext, useState, useMemo } from 'react';
+import { PRICING_MODES, VEHICLE_TYPES } from '../utils/constants';
 
 const BookingContext = createContext();
 
 export const BookingProvider = ({ children }) => {
-    const [bookingRequest, setBookingRequest] = useState({
+    const [bookingData, setBookingData] = useState({
         step: 1,
-        mode: 'local',
-        pickup: null,
-        destination: null,
-        itinerary: [],
-        vehicleType: 'sedan',
-        dates: { start: '', end: '' },
-        pricing: null
+        mode: PRICING_MODES.LOCAL,
+        pickupLocation: '',
+        destinationLocation: '',
+        startDate: '',
+        endDate: '',
+        guests: 1,
+        vehicleType: VEHICLE_TYPES.SEDAN,
+        majorDestinations: [],
+        detailedDestinations: [],
+        pricingEstimate: null,
+        paymentPreference: 0.25 // Default 25% advance
     });
 
-    const updateRequest = (data) => {
-        setBookingRequest(prev => ({ ...prev, ...data }));
+    const updateBooking = (updates) => {
+        setBookingData(prev => ({ ...prev, ...updates }));
+    };
+
+    const nextStep = () => {
+        setBookingData(prev => ({ ...prev, step: prev.step + 1 }));
+    };
+
+    const prevStep = () => {
+        setBookingData(prev => ({ ...prev, step: Math.max(1, prev.step - 1) }));
     };
 
     const resetBooking = () => {
-        setBookingRequest({
+        setBookingData({
             step: 1,
-            mode: 'local',
-            pickup: null,
-            destination: null,
-            itinerary: [],
-            vehicleType: 'sedan',
-            dates: { start: '', end: '' },
-            pricing: null
+            mode: PRICING_MODES.LOCAL,
+            pickupLocation: '',
+            destinationLocation: '',
+            startDate: '',
+            endDate: '',
+            guests: 1,
+            vehicleType: VEHICLE_TYPES.SEDAN,
+            majorDestinations: [],
+            detailedDestinations: [],
+            pricingEstimate: null,
+            paymentPreference: 0.25
         });
     };
 
     const value = useMemo(() => ({
-        bookingRequest,
-        updateRequest,
+        bookingData,
+        updateBooking,
+        nextStep,
+        prevStep,
         resetBooking
-    }), [bookingRequest]);
+    }), [bookingData]);
 
     return (
         <BookingContext.Provider value={value}>

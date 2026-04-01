@@ -1,15 +1,18 @@
 import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { TRIP_STATUS } from '../utils/constants';
+import { bookingService } from '../services/bookingService';
 import { otpService } from '../services/otpService';
+import { pricingService } from '../services/pricingService';
 
 const TripContext = createContext();
 
 export const TripProvider = ({ children }) => {
-    // Persistent trip state
     const [activeTrip, setActiveTrip] = useState(() => {
         const saved = localStorage.getItem('zenera_active_trip');
         return saved ? JSON.parse(saved) : null;
     });
+
+    const [availableRequests, setAvailableRequests] = useState([]);
 
     useEffect(() => {
         if (activeTrip) {
@@ -19,93 +22,67 @@ export const TripProvider = ({ children }) => {
         }
     }, [activeTrip]);
 
-    // Cross-Tab Sync: Listen for storage changes from other tabs
-    useEffect(() => {
-        const handleStorageChange = (e) => {
-            if (e.key === 'zenera_active_trip') {
-                const updatedTrip = e.newValue ? JSON.parse(e.newValue) : null;
-                setActiveTrip(updatedTrip);
-            }
-        };
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
-    }, []);
-
-    // Mock: When a trip is requested, simulate driver assignment
-    const requestRide = (rideData) => {
-        const id = 'ZT-' + Math.floor(Math.random() * 10000);
-        const newTrip = {
-            id,
-            ...rideData,
-            status: TRIP_STATUS.SEARCHING,
-            otp: null,
-            driver: null,
-            paymentStatus: 'PENDING',
-            createdAt: new Date().toISOString()
-        };
-        setActiveTrip(newTrip);
-        // Note: No automatic assignment anymore. Driver must accept manually.
+    const refreshAvailableRequests = () => {
+        const requests = bookingService.getAvailableForDrivers();
+        setAvailableRequests(requests);
     };
 
-    const acceptRide = (driverInfo) => {
-        setActiveTrip(prev => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                status: TRIP_STATUS.ASSIGNED,
-                driver: driverInfo || {
-                    id: 'D1',
-                    name: 'Rajesh Kumar',
-                    rating: 4.8,
-                    vehicle: 'White Maruti Dzire',
-                    plate: 'KA-01-MJ-1234'
-                }
-            };
-        });
+    const createTripRequest = async (bookingData) => {
+        const booking = await bookingService.createBooking(bookingData);
+        setActiveTrip(booking);
+        return booking;
     };
 
-    const updateStatus = (status) => {
-        setActiveTrip(prev => {
-            if (!prev) return prev;
-            const updates = { status };
-            // Auto-generate OTP when ready
-            if (status === TRIP_STATUS.OTP_READY && !prev.otp) {
-                updates.otp = otpService.generate();
-            }
-            return { ...prev, ...updates };
-        });
+    const acceptTrip = async (bookingId, driverInfo) => {
+        const updated = await bookingService.acceptBooking(bookingId, driverInfo);
+        setActiveTrip(updated);
+        return updated;
     };
 
-    const verifyTripOTP = (input) => {
-        if (!activeTrip || !activeTrip.otp) return false;
-        if (otpService.verify(input, activeTrip.otp)) {
-            updateStatus(TRIP_STATUS.STARTED);
+    const startTrip = async (bookingId, otp, startOdometer) => {
+        if (!activeTrip || activeTrip.id !== bookingId) throw new Error('Trip mismatch');
+        
+        if (otpService.verify(otp, activeTrip.otp)) {
+            const updated = await bookingService.updateBookingStatus(bookingId, TRIP_STATUS.TRIP_STARTED);
+            setActiveTrip({ ...updated, startOdometer, tripStartedAt: new Date().toISOString() });
             return true;
         }
-        return false;
+        throw new Error('Invalid OTP');
     };
 
-    const completeTrip = () => {
-        updateStatus(TRIP_STATUS.COMPLETED);
+    const endTrip = async (bookingId, endOdometer) => {
+        if (!activeTrip || activeTrip.id !== bookingId) throw new Error('Trip mismatch');
+        
+        const totalKm = parseFloat(endOdometer) - parseFloat(activeTrip.startOdometer || 0);
+        const billing = pricingService.calculateFinalFare({
+            distanceKm: totalKm,
+            vehicleType: activeTrip.vehicleType,
+            tripDays: activeTrip.tripDays || 1,
+            advancePaid: activeTrip.advancePaid || 0
+        });
+
+        const updated = await bookingService.updateBookingStatus(bookingId, TRIP_STATUS.TRIP_COMPLETED);
+        setActiveTrip({ ...updated, endOdometer, totalKm, billing, tripEndedAt: new Date().toISOString() });
+        return { success: true, billing };
     };
 
-    const cancelTrip = () => {
-        updateStatus(TRIP_STATUS.CANCELLED);
-        setTimeout(() => setActiveTrip(null), 2000);
+    const cancelTrip = async (bookingId) => {
+        const updated = await bookingService.updateBookingStatus(bookingId, TRIP_STATUS.CANCELLED);
+        setActiveTrip(null);
+        return updated;
     };
-
-    const resetTrip = () => setActiveTrip(null);
 
     const value = useMemo(() => ({
         activeTrip,
-        requestRide,
-        acceptRide,
-        updateStatus,
-        verifyTripOTP,
-        completeTrip,
+        availableRequests,
+        refreshAvailableRequests,
+        createTripRequest,
+        acceptTrip,
+        startTrip,
+        endTrip,
         cancelTrip,
-        resetTrip
-    }), [activeTrip]);
+        setActiveTrip
+    }), [activeTrip, availableRequests]);
 
     return (
         <TripContext.Provider value={value}>

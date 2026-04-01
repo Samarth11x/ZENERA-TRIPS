@@ -5,14 +5,22 @@ export const ROLES = {
 };
 
 export const TRIP_STATUS = {
-    PENDING: 'PENDING',        // User just requested
-    SEARCHING: 'SEARCHING',    // System looking for driver
-    ASSIGNED: 'ASSIGNED',      // Driver accepted
-    ARRIVING: 'ARRIVING',      // Driver reaching pickup
-    OTP_READY: 'OTP_READY',    // Driver reached, waiting for OTP
-    STARTED: 'STARTED',        // OTP verified, trip in progress
-    COMPLETED: 'COMPLETED',    // Driver ended trip
-    CANCELLED: 'CANCELLED'     // Trip aborted
+    SEARCHING: 'searching',
+    DRIVER_ASSIGNED: 'driver_assigned',
+    DRIVER_ARRIVING: 'driver_arriving',
+    OTP_READY: 'otp_ready',
+    TRIP_STARTED: 'trip_started',
+    TRIP_COMPLETED: 'trip_completed',
+    PAYMENT_PENDING: 'payment_pending',
+    PAYMENT_COMPLETED: 'payment_completed',
+    CANCELLED: 'cancelled'
+};
+
+export const KYC_STATUS = {
+    PENDING: 'pending',
+    VERIFYING: 'verifying',
+    APPROVED: 'approved',
+    REJECTED: 'rejected'
 };
 
 export const VEHICLE_TYPES = {
@@ -25,7 +33,6 @@ export const VEHICLE_TYPES = {
 
 export const PRICING_MODES = {
     LOCAL: 'local',
-    OUTSTATION_ONE_WAY: 'outstation_one_way',
-    OUTSTATION_ROUND: 'outstation_round',
     TOUR: 'tour'
 };
+

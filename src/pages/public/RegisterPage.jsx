@@ -1,113 +1,122 @@
 import React, { useState } from 'react';
-import { Container, Row, Col, Form, Button, Tabs, Tab } from 'react-bootstrap';
-import { motion } from 'framer-motion';
+import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useUI } from '../../context/UIContext';
+import GlassCard from '../../components/common/GlassCard';
 import { ROLES } from '../../utils/constants';
-import { useNavigate, Link } from 'react-router-dom';
 
 const RegisterPage = () => {
-    const { login } = useAuth();
+    const [formData, setFormData] = useState({
+        name: '', email: '', password: '', role: ROLES.USER
+    });
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
+    const { signup } = useAuth();
+    const { showToast } = useUI();
     const navigate = useNavigate();
-    const [activeTab, setActiveTab] = useState(ROLES.USER);
 
-    const container = {
-        hidden: { opacity: 0 },
-        show: {
-            opacity: 1,
-            transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            await signup(formData);
+            showToast('Account created successfully!');
+            navigate('/login');
+        } catch (err) {
+            setError(err.message || 'Registration failed');
+        } finally {
+            setLoading(false);
         }
     };
 
-    const item = {
-        hidden: { opacity: 0, y: 20 },
-        show: { opacity: 1, y: 0 }
-    };
-
-    const handleRegister = (e) => {
-        e.preventDefault();
-        // Simulation: on register, we auto-login
-        login(activeTab);
-        navigate(`/${activeTab}`);
-    };
-
     return (
-        <div className="register-page min-vh-100 d-flex align-items-center py-5 position-relative overflow-hidden bg-black">
-            {/* Ambient Background */}
-            <div className="position-absolute top-0 start-0 w-100 h-100 bg-gradient-dark opacity-75"></div>
-            <div className="position-absolute top-0 end-0 bg-accent rounded-circle blur-100 opacity-10" style={{ width: '400px', height: '400px' }}></div>
-            
-            <Container className="position-relative z-index-10 mt-5">
+        <div className="app-shell bg-black min-vh-100 d-flex align-items-center">
+            <Container>
                 <Row className="justify-content-center">
-                    <Col md={6} lg={5}>
-                        <motion.div 
-                            variants={container}
-                            initial="hidden"
-                            animate="show"
-                            className="card-glass border-z p-4 p-md-5 shadow-glow rounded-4"
-                        >
-                            <motion.div variants={item} className="text-center mb-5">
-                                <h2 className="brand-logo fs-2 fw-800 text-white mb-2">JOIN <span className="text-accent">ZENERA</span></h2>
-                                <p className="text-muted small">The Future of Premium Travel</p>
-                            </motion.div>
+                    <Col md={6} lg={5} xl={4}>
+                         <div className="text-center mb-5">
+                             <h1 className="brand-logo fs-1 mb-0 fw-800">ZENERA<span className="text-accent">TRIPS</span></h1>
+                             <p className="text-muted small text-uppercase tracking-widest mt-2">New Account Setup</p>
+                        </div>
 
-                            <motion.div variants={item} className="mb-4">
-                                <Tabs
-                                    activeKey={activeTab}
-                                    onSelect={(k) => setActiveTab(k)}
-                                    className="custom-tabs border-0 justify-content-center mb-4"
-                                >
-                                    <Tab eventKey={ROLES.USER} title="PASSENGER" />
-                                    <Tab eventKey={ROLES.DRIVER} title="DRIVER" />
-                                </Tabs>
-                            </motion.div>
+                        <GlassCard className="p-4 p-md-5 border-z shadow-glow">
+                            <h2 className="text-white fw-800 mb-4 h4">Create Membership</h2>
+                            
+                            {error && <Alert variant="danger" className="py-2 small bg-transparent border-danger text-danger border-1">{error}</Alert>}
 
-                            <Form onSubmit={handleRegister}>
-                                <motion.div variants={item} className="mb-3">
-                                    <Form.Label className="text-accent small fw-bold mb-1">FULL NAME</Form.Label>
+                            <Form onSubmit={handleSubmit} className="d-grid gap-4">
+                                <Form.Group>
+                                    <Form.Label className="text-accent small fw-bold">FULL NAME</Form.Label>
                                     <Form.Control 
                                         type="text" 
-                                        placeholder="John Doe" 
-                                        className="bg-dark text-white border-z py-2 shadow-none focus-accent" 
                                         required 
+                                        placeholder="E.g. Samarth"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({...formData, name: e.target.value})}
                                     />
-                                </motion.div>
+                                </Form.Group>
 
-                                <motion.div variants={item} className="mb-3">
-                                    <Form.Label className="text-accent small fw-bold mb-1">MOBILE NUMBER</Form.Label>
+                                <Form.Group>
+                                    <Form.Label className="text-accent small fw-bold">EMAIL ADDRESS</Form.Label>
                                     <Form.Control 
-                                        type="tel" 
-                                        placeholder="+91" 
-                                        className="bg-dark text-white border-z py-2 shadow-none focus-accent" 
+                                        type="email" 
                                         required 
+                                        placeholder="E.g. sam@example.com"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({...formData, email: e.target.value})}
                                     />
-                                </motion.div>
+                                </Form.Group>
 
-                                <motion.div variants={item} className="mb-4">
-                                    <Form.Label className="text-accent small fw-bold mb-1">CREATE PASSWORD</Form.Label>
+                                <Form.Group>
+                                    <Form.Label className="text-accent small fw-bold">PASSWORD</Form.Label>
                                     <Form.Control 
                                         type="password" 
-                                        placeholder="••••••••" 
-                                        className="bg-dark text-white border-z py-2 shadow-none focus-accent" 
                                         required 
+                                        placeholder="••••••••"
+                                        value={formData.password}
+                                        onChange={(e) => setFormData({...formData, password: e.target.value})}
                                     />
-                                </motion.div>
+                                </Form.Group>
 
-                                <motion.div variants={item} className="d-grid gap-3">
-                                    <Button 
-                                        variant="primary" 
-                                        type="submit" 
-                                        className="py-3 shadow-glow transition-smooth fw-bold"
-                                    >
-                                        JOIN AS {activeTab.toUpperCase()}
-                                    </Button>
-                                    
-                                    <div className="text-center mt-3">
-                                        <span className="text-muted small">Already a member? </span>
-                                        <Link to="/login" className="text-accent small fw-bold text-decoration-none hover-underline">Login</Link>
+                                <Form.Group>
+                                    <Form.Label className="text-accent small fw-bold">MEMBERSHIP CATEGORY</Form.Label>
+                                    <div className="d-flex gap-2">
+                                        <Button 
+                                            variant={formData.role === ROLES.USER ? 'accent' : 'outline-light'}
+                                            size="sm"
+                                            className="flex-grow-1 border-z py-2"
+                                            onClick={() => setFormData({...formData, role: ROLES.USER})}
+                                            type="button"
+                                            style={formData.role === ROLES.USER ? { backgroundColor: 'var(--z-accent-orange)', color: '#000' } : {}}
+                                        >
+                                            <i className="bi bi-person-fill me-2"></i>USER
+                                        </Button>
+                                        <Button 
+                                            variant={formData.role === ROLES.DRIVER ? 'accent' : 'outline-light'}
+                                            size="sm"
+                                            className="flex-grow-1 border-z py-2"
+                                            onClick={() => setFormData({...formData, role: ROLES.DRIVER})}
+                                            type="button"
+                                            style={formData.role === ROLES.DRIVER ? { backgroundColor: 'var(--z-accent-orange)', color: '#000' } : {}}
+                                        >
+                                            <i className="bi bi-car-front-fill me-2"></i>DRIVER
+                                        </Button>
                                     </div>
-                                </motion.div>
+                                </Form.Group>
+
+                                <Button variant="primary" type="submit" size="lg" disabled={loading} className="py-3 mt-2">
+                                    {loading ? <span className="spinner-border spinner-border-sm me-2"></span> : 'Secure Account Creation'}
+                                </Button>
                             </Form>
-                        </motion.div>
+                            
+                            <div className="text-center mt-5">
+                                <p className="text-muted small mb-0">Already have an account?</p>
+                                <Link to="/login" className="text-accent fw-bold text-decoration-none">Sign In</Link>
+                            </div>
+                        </GlassCard>
                     </Col>
                 </Row>
             </Container>

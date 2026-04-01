@@ -1,68 +1,74 @@
 import React from 'react';
-import { Nav } from 'react-bootstrap';
+import { Nav, Container } from 'react-bootstrap';
 import { Link, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
 import { ROLES } from '../../utils/constants';
 
 const BottomNav = () => {
-    const { isAuthenticated, role } = useAuth();
-    const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
 
-    if (!isAuthenticated) return null;
+  if (!isAuthenticated) return null;
 
-    const navItems = {
-        [ROLES.USER]: [
-            { icon: 'bi-house-door', label: 'Home', path: '/user' },
-            { icon: 'bi-clock-history', label: 'Rides', path: '/user/history' },
-            { icon: 'bi-person', label: 'Profile', path: '/user/profile' },
-        ],
-        [ROLES.DRIVER]: [
-            { icon: 'bi-speedometer2', label: 'Dash', path: '/driver' },
-            { icon: 'bi-wallet2', label: 'Earnings', path: '/driver/earnings' },
-            { icon: 'bi-person-badge', label: 'Account', path: '/driver/profile' },
-        ],
-        [ROLES.ADMIN]: [
-            { icon: 'bi-kanban', label: 'Overview', path: '/admin' },
-            { icon: 'bi-people', label: 'Partners', path: '/admin/drivers' },
-            { icon: 'bi-gear', label: 'Settings', path: '/admin/settings' },
-        ]
-    };
+  const renderUserTabs = () => (
+    <>
+      <Nav.Link as={Link} to="/user/home" active={location.pathname === '/user/home'}>
+        <i className={`bi bi-grid-fill fs-5 ${location.pathname === '/user/home' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/user/book" active={location.pathname === '/user/book'}>
+        <i className={`bi bi-plus-circle-fill fs-4 ${location.pathname === '/user/book' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/user/history" active={location.pathname === '/user/history'}>
+        <i className={`bi bi-clock-history fs-5 ${location.pathname === '/user/history' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/user/profile" active={location.pathname === '/user/profile'}>
+        <i className={`bi bi-person-fill fs-5 ${location.pathname === '/user/profile' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+    </>
+  );
 
-    const items = navItems[role] || [];
+  const renderDriverTabs = () => (
+    <>
+      <Nav.Link as={Link} to="/driver/home" active={location.pathname === '/driver/home'}>
+        <i className={`bi bi-house-door-fill fs-5 ${location.pathname === '/driver/home' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/driver/requests" active={location.pathname === '/driver/requests'}>
+        <i className={`bi bi-list-ul fs-5 ${location.pathname === '/driver/requests' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/driver/earnings" active={location.pathname === '/driver/earnings'}>
+        <i className={`bi bi-wallet2 fs-5 ${location.pathname === '/driver/earnings' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/driver/profile" active={location.pathname === '/driver/profile'}>
+        <i className={`bi bi-person-fill fs-5 ${location.pathname === '/driver/profile' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+    </>
+  );
 
-    return (
-        <div className="fixed-bottom bg-dark border-top border-z d-lg-none py-2 safe-area-bottom shadow-glow">
-            <Nav className="justify-content-around align-items-center">
-                {items.map((item, idx) => {
-                    const isActive = location.pathname === item.path;
-                    return (
-                        <Nav.Link 
-                            key={idx} 
-                            as={Link} 
-                            to={item.path}
-                            className={`d-flex flex-column align-items-center p-0 transition-smooth relative position-relative ${isActive ? 'text-accent' : 'text-muted'}`}
-                        >
-                            <motion.div
-                                initial={false}
-                                animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.1 : 1 }}
-                            >
-                                <i className={`bi ${isActive ? item.icon + '-fill' : item.icon} fs-5`}></i>
-                            </motion.div>
-                            <span style={{ fontSize: '10px' }} className="mt-1 fw-bold text-uppercase letter-spacing-tight">{item.label}</span>
-                            {isActive && (
-                                <motion.div 
-                                    layoutId="bottom-nav-active"
-                                    className="position-absolute bg-accent rounded-circle"
-                                    style={{ bottom: '-6px', width: '4px', height: '4px', boxShadow: '0 0 8px var(--accent)' }}
-                                />
-                            )}
-                        </Nav.Link>
-                    );
-                })}
-            </Nav>
-        </div>
-    );
+  const renderAdminTabs = () => (
+    <>
+      <Nav.Link as={Link} to="/admin/dashboard" active={location.pathname === '/admin/dashboard'}>
+        <i className={`bi bi-speedometer2 fs-5 ${location.pathname === '/admin/dashboard' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/admin/kyc" active={location.pathname === '/admin/kyc'}>
+        <i className={`bi bi-shield-check fs-5 ${location.pathname === '/admin/kyc' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+      <Nav.Link as={Link} to="/admin/bookings" active={location.pathname === '/admin/bookings'}>
+        <i className={`bi bi-calendar3 fs-5 ${location.pathname === '/admin/bookings' ? 'text-accent' : 'text-muted'}`}></i>
+      </Nav.Link>
+    </>
+  );
+
+  return (
+    <div className="fixed-bottom bg-black border-top border-z d-md-none" style={{ backdropFilter: 'blur(10px)', zIndex: 1030 }}>
+      <Container className="px-1 px-sm-3">
+        <Nav className="justify-content-between py-2 align-items-center flex-row">
+            {user?.role === ROLES.USER && renderUserTabs()}
+            {user?.role === ROLES.DRIVER && renderDriverTabs()}
+            {user?.role === ROLES.ADMIN && renderAdminTabs()}
+        </Nav>
+      </Container>
+    </div>
+  );
 };
 
 export default BottomNav;

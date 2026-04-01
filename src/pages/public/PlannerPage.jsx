@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Container, Row, Col, Card, Form, Button, ListGroup, Badge, Alert } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
-import AppNavbar from '../../components/common/AppNavbar';
 import { VEHICLE_PRICING } from '../../data/mockData';
 import { calculateFare as calculateTripFare } from '../../utils/pricing';
 
@@ -50,7 +49,7 @@ const PlannerPage = () => {
 
     return (
         <div className="app-shell bg-black min-vh-100">
-            <AppNavbar />
+
             <main className="section-padding pt-5 mt-5">
                 <Container>
                     <div className="text-center mb-5">

@@ -1,5 +1,4 @@
 import React from 'react';
-import AppNavbar from '../../components/common/AppNavbar';
 import HeroSection from '../../components/landing/HeroSection';
 import FeatureSection from '../../components/landing/FeatureSection';
 import HowItWorks from '../../components/landing/HowItWorks';
@@ -11,7 +10,7 @@ import { Link } from 'react-router-dom';
 const LandingPage = () => {
   return (
     <div className="app-shell bg-black">
-      <AppNavbar />
+
       
       <main>
         <HeroSection />

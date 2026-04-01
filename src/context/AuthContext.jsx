@@ -1,46 +1,46 @@
-import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
-import { ROLES } from '../utils/constants';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authService } from '../services/authService';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    // Current user and role with persistence
-    const [user, setUser] = useState(() => {
-        const saved = localStorage.getItem('zenera_auth');
-        return saved ? JSON.parse(saved) : null;
-    });
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (user) {
-            localStorage.setItem('zenera_auth', JSON.stringify(user));
-        } else {
-            localStorage.removeItem('zenera_auth');
+        const session = authService.getCurrentSession();
+        if (session) {
+            setUser(session);
         }
-    }, [user]);
+        setLoading(false);
+    }, []);
 
-    const login = (role = ROLES.USER) => {
-        setUser({
-            id: role === ROLES.USER ? 'U1' : (role === ROLES.DRIVER ? 'D1' : 'A1'),
-            name: role === ROLES.USER ? 'Samarth' : (role === ROLES.DRIVER ? 'Driver Partner' : 'Admin'),
-            role
-        });
+    const login = async (email, password) => {
+        try {
+            const userData = await authService.login(email, password);
+            setUser(userData);
+            return userData;
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const signup = async (userData) => {
+        try {
+            return await authService.signup(userData);
+        } catch (error) {
+            throw error;
+        }
     };
 
     const logout = () => {
+        authService.logout();
         setUser(null);
     };
 
-    const value = useMemo(() => ({
-        user,
-        role: user?.role || null,
-        login,
-        logout,
-        isAuthenticated: !!user
-    }), [user]);
-
     return (
-        <AuthContext.Provider value={value}>
-            {children}
+        <AuthContext.Provider value={{ user, login, signup, logout, loading, isAuthenticated: !!user }}>
+            {!loading && children}
         </AuthContext.Provider>
     );
 };

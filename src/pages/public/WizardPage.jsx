@@ -5,7 +5,6 @@ import { useBooking } from '../../context/BookingContext';
 import { VEHICLE_PRICING } from '../../data/mockData';
 import { calculateFare as calculateTripFare, getTripDuration } from '../../utils/pricing';
 import BookingStepper from '../../components/booking/BookingStepper';
-import AppNavbar from '../../components/common/AppNavbar';
 import Autocomplete from '../../components/common/Autocomplete';
 import { INDIAN_LOCATIONS } from '../../data/locations';
 
@@ -28,7 +27,7 @@ const WizardPage = () => {
 
     return (
         <div className="app-shell bg-black min-vh-100">
-            <AppNavbar />
+
             <main className="section-padding pt-5 mt-5">
                 <Container>
                     <Row className="justify-content-center">
